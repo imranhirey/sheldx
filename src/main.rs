@@ -24,7 +24,7 @@ async fn main() {
     axum::serve::bind(&addr)
         .serve(|| async {
             axum::Router::new()
-                .route("/", axum::handler::get(|| async { "Hello, World!" }))
+                .route("/", axum::handler::get(|| async { "Hello, World! dev changes" }))
         })
         .await
         .unwrap();
