@@ -5,7 +5,8 @@ edition = "2021"
 
 [dependencies]
 
-axum = "0.7.5"
+hyper = { version = "1", features = ["full"] }
+hyper-tls = "0.6.0"
 tokio={version="1.4.1", features=["full"]}
 tokio-rustls = "0.26.0"
 rustls = "0.23.12"
@@ -21,3 +22,6 @@ fern = "0.6.0"
 env_logger  = "0.11.5"
 colored = "2.0"
 async-trait = "0.1.51"
+http-body-util = "0.1"
+hyper-util = { version = "0.1", features = ["full"] }
+webpki-roots = "0.26.3"
