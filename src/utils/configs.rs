@@ -45,6 +45,22 @@ impl Configs {
 }
 
 pub fn load_configs() -> Result<Configs, Box<dyn Error>> {
+    // check if it the first time the user is running the program
+    if
+        !PathBuf::from(
+            format!("{}/sheldx/configs/config.toml", dirs::home_dir().unwrap().to_str().unwrap())
+        ).exists()
+    {
+        // create default config file
+        let default_config = Configs {
+            cert_path: String::from(""),
+            key_path: String::from(""),
+            is_tls_enabled: false,
+            show_logs_on_console: true,
+            forwarding_rules: None,
+            static_files_directory: None,
+        };
+    }
     let home_dir = dirs::home_dir().ok_or("Could not find home directory")?;
     let config_path: PathBuf = [
         home_dir.to_str().ok_or("Invalid home directory string")?,
