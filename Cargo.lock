@@ -1365,6 +1365,7 @@ dependencies = [
  "rustls-pemfile",
  "serde",
  "serde_derive",
+ "thiserror",
  "tokio",
  "tokio-rustls",
  "toml",

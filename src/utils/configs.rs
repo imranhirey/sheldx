@@ -1,15 +1,15 @@
-use serde::Deserialize;
+use serde::{ Deserialize, Serialize };
 use std::fs;
 use std::path::PathBuf;
 use std::error::Error;
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, Serialize)]
 pub struct ForwardingRule {
     pub host: String,
     pub destination: String,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, Serialize)]
 pub struct Configs {
     pub cert_path: String,
     pub key_path: String,
@@ -52,14 +52,7 @@ pub fn load_configs() -> Result<Configs, Box<dyn Error>> {
         ).exists()
     {
         // create default config file
-        let default_config = Configs {
-            cert_path: String::from(""),
-            key_path: String::from(""),
-            is_tls_enabled: false,
-            show_logs_on_console: true,
-            forwarding_rules: None,
-            static_files_directory: None,
-        };
+      create_default_config()?;
     }
     let home_dir = dirs::home_dir().ok_or("Could not find home directory")?;
     let config_path: PathBuf = [
@@ -88,4 +81,48 @@ pub fn load_configs() -> Result<Configs, Box<dyn Error>> {
     };
 
     Ok(config)
+}
+
+pub fn create_default_config() -> Result<(), Box<dyn Error>> {
+    let home_dir = dirs::home_dir().ok_or("Could not find home directory")?;
+    let config_dir: PathBuf = [
+        home_dir.to_str().ok_or("Invalid home directory string")?,
+        "sheldx",
+        "configs",
+    ]
+        .iter()
+        .collect();
+
+    // Ensure the path is valid
+    if !config_dir.exists() {
+        fs::create_dir_all(&config_dir)?;
+    }
+
+    let config_path: PathBuf = [
+        home_dir.to_str().ok_or("Invalid home directory string")?,
+        "sheldx",
+        "configs",
+        "config.toml",
+    ]
+        .iter()
+        .collect();
+
+    // Ensure the path is valid
+    if !config_path.exists() {
+        let default_config = Configs {
+            cert_path: String::from(""),
+            key_path: String::from(""),
+            is_tls_enabled: false,
+            show_logs_on_console: true,
+            forwarding_rules: None,
+            // statics/index.html
+            static_files_directory: format!("{}/sheldx/statics/index.html", home_dir.to_str().unwrap()).into(),
+        };
+
+        let default_config_string = toml::to_string(&default_config)?;
+
+        fs::write(&config_path, default_config_string)?;
+    }
+
+    Ok(())
 }

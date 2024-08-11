@@ -25,3 +25,4 @@ async-trait = "0.1.51"
 http-body-util = "0.1"
 hyper-util = { version = "0.1", features = ["full"] }
 webpki-roots = "0.26.3"
+thiserror   = "1.0.29"
