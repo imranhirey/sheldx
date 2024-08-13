@@ -26,3 +26,5 @@ http-body-util = "0.1"
 hyper-util = { version = "0.1", features = ["full"] }
 webpki-roots = "0.26.3"
 thiserror   = "1.0.29"
+daemonize = "0.5.0"
+redis="0.26.1"

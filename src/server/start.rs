@@ -1,4 +1,3 @@
-use std::convert::Infallible;
 use std::fs::File;
 use std::io::BufReader;
 use std::net::{ IpAddr, Ipv4Addr };
@@ -6,26 +5,16 @@ use std::path::PathBuf;
 use std::{ error::Error as StdError, net::SocketAddr };
 use std::sync::Arc;
 use async_trait::async_trait;
-use http_body_util::{ BodyExt, Full };
-use hyper::body::{ Body, Buf, Bytes, Incoming };
-use hyper::client::conn::http1::{ self, handshake, Connection, SendRequest };
 use hyper::server::conn::http1::{ self as serverhttp, Builder };
 use hyper::service::service_fn;
-use hyper::{ Method, Request, Response, StatusCode };
 use hyper_util::rt::TokioIo;
 use log;
-use log4rs::config;
-use rustls::pki_types::{ CertificateDer, PrivateKeyDer };
-use rustls_pemfile::pkcs8_private_keys;
-use tokio::fs;
-use tokio::io::{ AsyncReadExt, AsyncWriteExt };
-use tokio::net::{ TcpListener, TcpStream };
+
+use tokio::net::TcpListener;
 use tokio_rustls::TlsAcceptor;
-use std::future::Future;
-use std::pin::Pin;
 
 use crate::handlers::handle_http_connections;
-use crate::utils::{ init_logger, load_configs, Configs };
+use crate::utils::load_configs;
 
 /// A struct representing a server that does not use TLS.
 /// It contains a connection handler function that will be called
@@ -61,13 +50,18 @@ impl Server for WithoutTLS {
         // Inform the user that TLS is recommended for production use
         log::warn!("Sheldx recommends using TLS for production use");
 
-        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), 443);
+        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), 3001);
         log::info!("Starting server on: {}", addr);
         let listener = TcpListener::bind(&addr).await?;
         log::info!("Server started on: {}", addr);
+   
 
         loop {
             let (stream, _) = listener.accept().await?;
+                 // get teh users real ip address
+
+        let client_ip = stream.peer_addr()?.ip().to_string();
+        
             let io = TokioIo::new(stream);
 
             if configs.show_logs_on_console {
@@ -78,7 +72,9 @@ impl Server for WithoutTLS {
                 if
                     let Err(err) = serverhttp::Builder
                         ::new()
-                        .serve_connection(io, service_fn(handle_http_connections)).await
+                        .serve_connection(io, service_fn(
+                            |req| handle_http_connections(req, client_ip.clone())
+                        )).await
                 {
                     log::error!("Error while serving connection: {}", err);
                 }
@@ -91,7 +87,6 @@ impl Server for WithoutTLS {
 impl Server for WithTls {
     async fn start(&self) -> Result<(), Box<dyn StdError>> {
         let configs = load_configs()?;
-        let home_dir = dirs::home_dir().ok_or("Could not find home directory")?;
         let keyfile = configs.key_path;
         let certfile = configs.cert_path;
 
@@ -116,7 +111,9 @@ impl Server for WithTls {
 
         let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), 443);
         let listener = TcpListener::bind(addr).await?;
-        let service = service_fn(handle_http_connections);
+        let service = service_fn(
+            |req| handle_http_connections(req, String::new())
+        );
 
         log::info!("Starting server on: {}", addr);
         loop {
@@ -127,8 +124,9 @@ impl Server for WithTls {
                 let tls_stream = match tls_acceptor.accept(stream).await {
                     Ok(tls_stream) => {
                         log::info!("TLS handshake successful");
-                        
-                        tls_stream},
+
+                        tls_stream
+                    }
                     Err(err) => {
                         eprintln!("failed to perform tls handshake: {err:#}");
                         return;
@@ -140,29 +138,9 @@ impl Server for WithTls {
                         service.clone()
                     ).await
                 {
-                    eprintln!("failed to serve connection: {err:#}");
+                    log::error!("failed to serve connection: {err:#}");
                 }
             });
         }
-
-        Ok(())
     }
-}
-async fn echo(req: Request<Incoming>) -> Result<Response<Full<Bytes>>, hyper::Error> {
-    let mut response = Response::new(Full::default());
-    match (req.method(), req.uri().path()) {
-        // Help route.
-        (&Method::GET, "/") => {
-            *response.body_mut() = Full::from("Try POST /echo\n");
-        }
-        // Echo service route.
-        (&Method::POST, "/echo") => {
-            *response.body_mut() = Full::from(req.into_body().collect().await?.to_bytes());
-        }
-        // Catch-all 404.
-        _ => {
-            *response.status_mut() = StatusCode::NOT_FOUND;
-        }
-    }
-    Ok(response)
 }
