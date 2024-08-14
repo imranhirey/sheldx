@@ -65,10 +65,10 @@ pub fn load_configs() -> Result<Configs, Box<dyn Error>> {
     log::info!("Loading configuration file from {:?}", config_path);
 
     // Check if configuration file exists
-    if !config_path.exists() {
+    
         // Create default config file
         create_default_config()?;
-    }
+    
     log::info!("Configuration file found at {:?}", config_path);
 
     // Read configuration file
@@ -101,7 +101,7 @@ pub fn create_default_config() -> Result<(), Box<dyn Error>> {
             is_tls_enabled: false,
             show_logs_on_console: true,
             forwarding_rules: None,
-            static_files_directory: Some(String::from("/etc/sheldx/statics/index.html")),
+            static_files_directory: Some(String::from("/etc/sheldx/static/index.html")),
             rate_limit:
                 Some(RateLimitConfig {
                     limit: 100,

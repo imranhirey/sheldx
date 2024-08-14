@@ -83,6 +83,8 @@ pub async fn handle_http_connections(
         if configs.static_files_directory.is_none() {
             return Ok(show_default_page());
         } else {
+
+            log::debug!("looking at statics file in the configs");
             let file = fs
                 ::read_to_string(configs.static_files_directory.unwrap())
                 .map_err(|_| ProxyError::RuleNotFound)?;
