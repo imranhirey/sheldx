@@ -10,6 +10,7 @@ use http_body_util::{ BodyExt, Full };
 use hyper::{ body::Bytes, client::conn::http1, Request, Response };
 use tokio::{ net::TcpStream, spawn, time::timeout };
 use crate::server::RateLimiterMap;
+use crate::services::enforce_rate_limit;
 use crate::utils::{
     extract_host,
     get_forwarding_rule,
@@ -41,31 +42,33 @@ pub async fn handle_http_connections(
 ) -> Result<Response<Full<Bytes>>, ProxyError> {
     log::info!("Client IP: {}", client_ip);
 
-    let mut rate_limiters = rate_limiter_map.lock().await;
-    // see all the rate limiters values and keys
+    // let mut rate_limiters = rate_limiter_map.lock().await;
+    // // see all the rate limiters values and keys
 
-    rate_limiters.iter().for_each(|(key, value)| {
-        println!("Key: {}, Value: {:?}", key, value.rate());
-    });
-    let rate_limiter = rate_limiters
-        .entry(client_ip.clone())
-        .or_insert_with(|| {
-            Ratelimiter::builder(10, Duration::from_secs(60)).max_tokens(10).build().unwrap()
-        });
+    // rate_limiters.iter().for_each(|(key, value)| {
+    //     println!("Key: {}, Value: {:?}", key, value.rate());
+    // });
+    // let rate_limiter = rate_limiters
+    //     .entry(client_ip.clone())
+    //     .or_insert_with(|| {
+    //         Ratelimiter::builder(10, Duration::from_secs(60)).max_tokens(10).build().unwrap()
+    //     });
 
-    // Apply rate limiting
-    if let Err(sleep) = rate_limiter.try_wait() {
-        // Rate limit exceeded
+    // // Apply rate limiting
+    // if let Err(sleep) = rate_limiter.try_wait() {
+    //     // Rate limit exceeded
 
-        if let Err(sleep) = rate_limiter.try_wait() {
-            let title = "<h1>429 Too Many Requests</h1>";
-            let message = format!(
-                "p>Rate limit exceeded. Try again in {} seconds</p>",
-                sleep.as_secs()
-            );
-            return Ok(show_html_page(title, &message));
-        }
-    }
+    //     if let Err(sleep) = rate_limiter.try_wait() {
+    //         let title = "<h1>429 Too Many Requests</h1>";
+    //         let message = format!(
+    //             "p>Rate limit exceeded. Try again in {} seconds</p>",
+    //             sleep.as_secs()
+    //         );
+    //         return Ok(show_html_page(title, &message));
+    //     }
+    // }
+
+    enforce_rate_limit(&req, &client_ip, rate_limiter_map)?;
 
     let configs = load_configs().map_err(|_| ProxyError::ConfigError)?;
     log::debug!("Configs: {:?}", configs);
