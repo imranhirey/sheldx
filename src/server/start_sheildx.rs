@@ -8,7 +8,7 @@ use super::{ Server, WithoutTLS };
 pub async fn start_sheildx() -> Result<(), Box<dyn std::error::Error>> {
     let configs = load_configs()?;
     // log::debug!("ma ufaran yahay: {:?}", configs.is_tls_enabled);
-log::debug!("ma ufaran yahay: {:?}", configs.is_tls_enabled);
+
     if configs.is_tls_enabled {
 
         let server = WithTls {};
