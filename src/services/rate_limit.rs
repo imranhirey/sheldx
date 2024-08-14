@@ -12,6 +12,8 @@ strategy = "hashmap" // third look for this
 
 */
 
+use crate::handlers::{show_html_page, ProxyError};
+
 
 pub fn enforce_rate_limit(
     req: &Request<hyper::body::Body>,

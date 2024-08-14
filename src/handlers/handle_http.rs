@@ -169,8 +169,7 @@ fn show_default_page() -> Response<Full<Bytes>> {
         .body(Full::from(Bytes::from(file)))
         .unwrap()
 }
-
-fn show_html_page(title: &str, message: &str) -> Response<Full<Bytes>> {
+pub  fn show_html_page(title: &str, message: &str) -> Response<Full<Bytes>> {
     let html = format!(
         "<!DOCTYPE html>
         <html>
