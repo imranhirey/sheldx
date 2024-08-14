@@ -77,7 +77,7 @@ log::debug!("trying to load config file from {:?}", config_path);
 
     // Read configuration file
     let config_string = fs::read_to_string(&config_path)?;
-    log::debug!("Configuration file: {:?}", config_string);
+    log::debug!("Configuration file updated: {:?}", config_string);
     let config: Result<Configs, toml::de::Error> = toml::from_str(&config_string);
 
     match config {
