@@ -91,7 +91,7 @@ log::debug!("trying to load config file from {:?}", config_path);
 
 pub fn create_default_config() -> Result<(), Box<dyn Error>> {
     let config_dir = PathBuf::from("/etc/sheldx/configs");
-    let config_path = config_dir.join("config.conf");
+    let config_path = config_dir.join("main.conf");
 
     // Ensure the path exists
     if !config_dir.exists() {
