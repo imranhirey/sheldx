@@ -44,15 +44,17 @@ impl Configs {
 pub fn load_configs() -> Result<Configs, Box<dyn Error>> {
     let config_dir = PathBuf::from("/etc/sheldx/configs");
     let config_path = config_dir.join("main.conf");
-
+log::debug!("trying to load config file from {:?}", config_path);
     // Check if configuration file exists
     if !config_path.exists() {
         // Create default config file
+        log::warn!("Configuration file not found, creating default configuration file");
         create_default_config()?;
     }
 
     // Read configuration file
     let config_string = fs::read_to_string(&config_path)?;
+    log::debug!("Configuration file: {:?}", config_string);
     let config: Result<Configs, toml::de::Error> = toml::from_str(&config_string);
 
     match config {
@@ -66,7 +68,7 @@ pub fn load_configs() -> Result<Configs, Box<dyn Error>> {
 
 pub fn create_default_config() -> Result<(), Box<dyn Error>> {
     let config_dir = PathBuf::from("/etc/sheldx/configs");
-    let config_path = config_dir.join("config.toml");
+    let config_path = config_dir.join("config.conf");
 
     // Ensure the path exists
     if !config_dir.exists() {

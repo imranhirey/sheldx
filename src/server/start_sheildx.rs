@@ -15,6 +15,7 @@ pub async fn start_sheildx() -> Result<(), Box<dyn std::error::Error>> {
         server.start().await?;
     } else {
         log::warn!("Sheldx recommends using TLS for production use");
+        println!("Sheldx recommends using TLS for production use");
         let server = WithoutTLS {};
         server.start().await?;
     }
