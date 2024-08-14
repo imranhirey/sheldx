@@ -4,4 +4,8 @@ SheldX is a powerful and versatile proxy server that offers a suite of security 
 
 
 
-rust is not fast
+redis is fast 
+
+
+
+
