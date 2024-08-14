@@ -64,13 +64,13 @@ pub fn load_configs() -> Result<Configs, Box<dyn Error>> {
     let config_path = config_dir.join("main.conf");
 
 log::debug!("trying to load config file from {:?}", config_path);
-    log::info!("Loading configuration file from {:?}", config_path);
+    log::info!("Loading updated configuration file from {:?}", config_path);
 
 
     // Check if configuration file exists
     
         // Create default config file
-        log::warn!("Configuration file not found, creating default configuration file");
+        log::warn!("Configuration file not found, creating default updated configuration file");
         create_default_config()?;
     
     log::info!("Configuration file found at {:?}", config_path);
