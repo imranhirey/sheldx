@@ -5,6 +5,7 @@ use utils::{init_logger, start_redis};
 mod handlers;
 mod utils;
 mod server;
+mod services;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {

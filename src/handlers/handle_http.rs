@@ -1,11 +1,15 @@
 use std::collections::HashMap;
 use std::fs;
+use std::sync::Arc;
 use std::time::{ Duration, SystemTime, UNIX_EPOCH };
+use chrono::format;
+use ratelimit::Ratelimiter;
 use redis::Commands;
 use thiserror::Error;
 use http_body_util::{ BodyExt, Full };
 use hyper::{ body::Bytes, client::conn::http1, Request, Response };
 use tokio::{ net::TcpStream, spawn, time::timeout };
+use crate::server::RateLimiterMap;
 use crate::utils::{
     extract_host,
     get_forwarding_rule,
@@ -32,36 +36,36 @@ pub enum ProxyError {
 
 pub async fn handle_http_connections(
     req: Request<hyper::body::Incoming>,
-    client_ip: String
+    client_ip: String,
+    rate_limiter_map: &RateLimiterMap
 ) -> Result<Response<Full<Bytes>>, ProxyError> {
     log::info!("Client IP: {}", client_ip);
 
-    let client = redis::Client::open("redis://127.0.0.1/")?;
-    let mut con = client.get_connection()?;
+    let mut rate_limiters = rate_limiter_map.lock().await;
+    // see all the rate limiters values and keys
 
-    let current_time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
-    let key_exists: bool = con.exists(&client_ip)?;
+    rate_limiters.iter().for_each(|(key, value)| {
+        println!("Key: {}, Value: {:?}", key, value.rate());
+    });
+    let rate_limiter = rate_limiters
+        .entry(client_ip.clone())
+        .or_insert_with(|| {
+            Ratelimiter::builder(10, Duration::from_secs(60)).max_tokens(10).build().unwrap()
+        });
 
-    if key_exists {
-        let request_count: u32 = con.get(&client_ip)?;
-        if request_count > 10 {
-            //set Retry-After header
-            let time_remaining: i32 = 60 ;
-            let resposne =Response::builder()
-                .status(429)
-                .header("Retry-After", time_remaining.to_string())
-                .body(Full::from(Bytes::from("Too many requests")))
-                .unwrap();
-            return Ok(resposne);
+    // Apply rate limiting
+    if let Err(sleep) = rate_limiter.try_wait() {
+        // Rate limit exceeded
 
-         
-        } else {
-            con.incr::<&str, u32, u32>(&client_ip, 1)?;
+        if let Err(sleep) = rate_limiter.try_wait() {
+            let title = "<h1>429 Too Many Requests</h1>";
+            let message = format!(
+                "p>Rate limit exceeded. Try again in {} seconds</p>",
+                sleep.as_secs()
+            );
+            return Ok(show_html_page(title, &message));
         }
-    } else {
-        con.set::<&str, u32, ()>(&client_ip, 1)?;
-        con.expire::<&str, usize>(&client_ip, 60)?;
-    };
+    }
 
     let configs = load_configs().map_err(|_| ProxyError::ConfigError)?;
     log::debug!("Configs: {:?}", configs);
@@ -79,6 +83,8 @@ pub async fn handle_http_connections(
         if configs.static_files_directory.is_none() {
             return Ok(show_default_page());
         } else {
+
+            log::debug!("looking at statics file in the configs");
             let file = fs
                 ::read_to_string(configs.static_files_directory.unwrap())
                 .map_err(|_| ProxyError::RuleNotFound)?;
@@ -160,3 +166,63 @@ fn show_default_page() -> Response<Full<Bytes>> {
         .body(Full::from(Bytes::from(file)))
         .unwrap()
 }
+
+fn show_html_page(title: &str, message: &str) -> Response<Full<Bytes>> {
+    let html = format!(
+        "<!DOCTYPE html>
+        <html>
+            <head>
+                <title>{}</title>
+            </head>
+            <body>
+                <h1>{}</h1>
+                <p>{}</p>
+            </body>
+        </html>",
+        title,
+        title,
+        message
+    );
+    Response::builder()
+        .status(404)
+        .body(Full::from(Bytes::from(html)))
+        .unwrap()
+}
+
+
+
+
+
+
+
+
+
+
+
+
+    // let client = redis::Client::open("redis://127.0.0.1:6383")?;
+    // let mut con = client.get_connection()?;
+
+    // let current_time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+    // let key_exists: bool = con.exists(&client_ip)?;
+
+    // if key_exists {
+    //     let request_count: u32 = con.get(&client_ip)?;
+    //     if request_count > 10 {
+    //         //set Retry-After header
+    //         let time_remaining: i32 = 60 ;
+    //         let resposne =Response::builder()
+    //             .status(429)
+    //             .header("Retry-After", time_remaining.to_string())
+    //             .body(Full::from(Bytes::from("Too many requests")))
+    //             .unwrap();
+    //         return Ok(resposne);
+
+    //     } else {
+    //         con.incr::<&str, u32, u32>(&client_ip, 1)?;
+    //     }
+    // } else {
+    //     con.set::<&str, u32, ()>(&client_ip, 1)?;
+    //     con.expire::<&str, usize>(&client_ip, 60)?;
+
+    // we using hashmaps because hashmaps is O(1) and we can use it to store the rate limiters for each client ip
