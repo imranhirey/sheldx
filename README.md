@@ -1,6 +1,7 @@
 
 > **⚠️ Note: Sheldx is currently under development and is not ready for production use.**  
 > Please use it with caution and expect potential changes in the configuration and functionality as the project evolves.
+> for more info contact me at imran@sheldx.com
 
 ## Sheldx: A Simple and Powerful Proxy with Rate Limiting
 
