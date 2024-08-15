@@ -1,4 +1,7 @@
 
+> **⚠️ Note: Sheldx is currently under development and is not ready for production use.**  
+> Please use it with caution and expect potential changes in the configuration and functionality as the project evolves.
+
 ## Sheldx: A Simple and Powerful Proxy with Rate Limiting
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/imranhirey/sheldx)](https://goreportcard.com/report/github.com/imranhirey/sheldx)
