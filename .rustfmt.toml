@@ -1,0 +1,8 @@
+max_width = 120
+# Default: 4
+tab_spaces = 2
+reorder_imports = true
+
+# Reorder lists of names in import statements alphabetically.
+# Default: false
+reorder_imported_names = true

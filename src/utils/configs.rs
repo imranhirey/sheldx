@@ -41,6 +41,8 @@ pub struct Configs {
     pub cert_path: String,
     pub key_path: String,
     pub is_tls_enabled: bool,
+    pub connection_timeout: Option<u64>,
+    pub max_retries: Option<u8>,
     pub show_logs_on_console: bool,
     pub forwarding_rules: Option<Vec<ForwardingRule>>,
     pub static_files_directory: Option<String>,
@@ -120,6 +122,8 @@ pub fn create_default_config() -> Result<(), ConfigError> {
             key_path: String::from(""),
             is_tls_enabled: false,
             show_logs_on_console: true,
+            connection_timeout: Some(10),
+            max_retries: Some(3),
             forwarding_rules: None,
             static_files_directory: Some(String::from("/etc/sheldx/static/index.html")),
             rate_limit_rules: Some(
