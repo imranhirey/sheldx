@@ -5,7 +5,6 @@
 
 ## Sheldx: A Simple and Powerful Proxy with Rate Limiting
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/imranhirey/sheldx)](https://goreportcard.com/report/github.com/imranhirey/sheldx)
 [![GitHub license](https://img.shields.io/github/license/imranhirey/sheldx)](https://github.com/imranhirey/sheldx/blob/main/LICENSE)
 [![GitHub release](https://img.shields.io/github/v/release/imranhirey/sheldx)](https://github.com/imranhirey/sheldx/releases)
 
