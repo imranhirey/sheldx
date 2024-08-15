@@ -1,99 +1,119 @@
+## SheldX: Your Go-To Proxy for Rate Limiting and More
 
-## Sheldx: A Simple and Powerful Proxy with Rate Limiting
+SheldX is a lightweight and performant proxy server written in Go. It's designed to be easy to use and configure, making it the perfect solution for:
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/imranhirey/sheldx)](https://goreportcard.com/report/github.com/imranhirey/sheldx)
-[![GitHub license](https://img.shields.io/github/license/imranhirey/sheldx)](https://github.com/imranhirey/sheldx/blob/main/LICENSE)
-[![GitHub release](https://img.shields.io/github/v/release/imranhirey/sheldx)](https://github.com/imranhirey/sheldx/releases)
+* **Rate limiting** traffic to your applications, preventing abuse and ensuring availability.
+* **Forwarding** traffic to different backend servers based on hostnames.
+* **Serving static files**, acting as a simple web server.
+* **Gaining insights** into your traffic patterns with detailed logging.
 
-**Sheldx** is a lightweight and efficient proxy server written in Go. It offers simple configuration, flexible routing, and robust rate limiting capabilities to protect your backend services.
+**SheldX is currently under active development.** We are constantly adding new features and improvements.
 
-**Key Features:**
+### Key Features
 
-- **Easy Configuration:** Get started quickly with a human-readable configuration file.
-- **Dynamic Forwarding Rules:** Define rules to route traffic to different target servers based on the incoming host.
-- **Rate Limiting:** Implement rate limiting using either an in-memory `HashMap` or a `Redis` backend for distributed scenarios.
-- **Granular Control:** Configure rate limits per host, path, or IP address.
-- **TLS Support:** Secure your proxy with TLS encryption (configurable).
-- **Customizable Logging:** Control the level of logging detail displayed on the console.
+* **Powerful Rate Limiting:**
+* Define flexible rate limits based on host, path, and IP address.
+* Choose from multiple rate limiting strategies like fixed window, sliding window, and token bucket (using HashMap or Redis).
+* Customize limits (requests per duration) and burst capacity.
+* Easily exclude specific paths or IP addresses from rate limiting.
+* **Simple Forwarding Rules:**
+* Forward incoming requests to different target servers based on the requested host.
+* **Static File Serving:**
+* Serve static content like HTML, CSS, and JavaScript files from a specified directory.
+* **TLS Support:**
+* Secure communication with both clients and backend servers using TLS encryption (configurable).
+* **Detailed Logging:**
+* Get insights into your traffic with configurable logging options, including console output.
+* **Easy Configuration:**
+* Configure SheldX through a simple and intuitive TOML configuration file.
+* **Lightweight and Performant:**
+* Built with Go for efficiency and speed, ensuring minimal overhead for your applications.
 
-**Website:** [https://sheldx.com/](https://sheldx.com/)
-**GitHub:** [https://github.com/imranhirey/sheldx](https://github.com/imranhirey/sheldx)
+### Getting Started
 
-## Installation
+1. **Clone the repository:**
+```bash
+git clone https://github.com/imranhirey/sheldx.git
+cd sheldx
+```
 
-1. **Download the latest release:** [https://github.com/imranhirey/sheldx/releases](https://github.com/imranhirey/sheldx/releases)
-
-2. **Or build from source:**
+2. **Build SheldX:**
 ```bash
 go build
 ```
 
-## Configuration
-
-Sheldx uses a simple TOML configuration file. Here's an example:
+3. **Configure SheldX:**
+Open the `config.toml` file and customize the following sections:
 
 ```toml
-cert_path = ""
-key_path = ""
+cert_path = "" # Path to your TLS certificate (leave empty if TLS is disabled)
+key_path = "" # Path to your TLS private key (leave empty if TLS is disabled)
 is_tls_enabled = false
 show_logs_on_console = true
 static_files_directory = "/etc/sheldx/static/index.html"
 
 [[rate_limit_rules]]
-host = "app.localhost:3001"
-limit = 10
-duration = 60
-max_tokens = 1000
-excluded_paths = ["/health"]
-excluded_ip_list = ["192.168.1.1"]
-strategy = "HashMap"
+host = "app.localhost:3001" # Target host for rate limiting
+limit = 10 # Requests allowed per duration
+duration = 60 # Duration in seconds
+max_tokens = 1000 # Maximum burst capacity
+excluded_paths = ["/health"] # Paths excluded from rate limiting
+excluded_ip_list = ["192.168.1.1"] # IPs excluded from rate limiting
+strategy = "HashMap" # Rate limiting strategy: "HashMap" or "Redis"
 
 [[rate_limit_rules]]
-host = "*"
-limit = 5
-duration = 60
-max_tokens = 500
-excluded_paths = ["/status"]
-excluded_ip_list = []
-strategy = "Redis"
+# ... Add more rate limit rules as needed ...
 
 [[forwarding_rules]]
-host="app.localhost:3001"
-target="192.168.0.53:3000"
+host = "app.localhost:3001" # Host to match for forwarding
+target = "192.168.0.53:3000" # Target server to forward requests to
+
+[[forwarding_rules]]
+# ... Add more forwarding rules as needed ...
 ```
 
-**Configuration Options:**
-
-- **cert_path:** Path to your TLS certificate file.
-- **key_path:** Path to your TLS private key file.
-- **is_tls_enabled:** Enable/disable TLS encryption.
-- **show_logs_on_console:** Show logs on the console.
-- **static_files_directory:** Directory path for serving static files.
-
-**Rate Limit Rules:**
-
-- **host:** Hostname or wildcard pattern to apply the rule.
-- **limit:** Number of requests allowed per duration.
-- **duration:** Time window in seconds for the rate limit.
-- **max_tokens:** Maximum burst capacity for requests.
-- **excluded_paths:** List of paths to exclude from rate limiting.
-- **excluded_ip_list:** List of IP addresses to exclude from rate limiting.
-- **strategy:** Rate limiting strategy (HashMap or Redis).
-
-**Forwarding Rules:**
-
-- **host:** Hostname or wildcard pattern to match incoming requests.
-- **target:** Target server address to forward requests to.
-
-## Running Sheldx
-
-1. Save your configuration file (e.g., `sheldx.toml`).
-2. Run Sheldx:
-
+4. **Run SheldX:**
 ```bash
-./sheldx -config sheldx.toml
+./sheldx
 ```
 
-## Contributing
+### Examples
 
-Contributions are welcome! Please open an issue or submit a pull request if you have any improvements or feature request
+**Rate Limit Example (using Redis):**
+
+```toml
+[[rate_limit_rules]]
+host = "api.example.com"
+limit = 100
+duration = 60
+max_tokens = 200
+excluded_paths = ["/login"]
+excluded_ip_list = ["10.0.0.1", "172.16.0.0/12"]
+strategy = "Redis"
+```
+
+This configuration limits requests to `api.example.com` to 100 requests per minute, with a burst capacity of 200 requests. Requests to `/login`, and requests from IPs within the specified ranges, are excluded from rate limiting.
+
+
+**Forwarding Example:**
+
+```toml
+[[forwarding_rules]]
+host = "app1.example.com"
+target = "192.168.1.10:8080"
+
+[[forwarding_rules]]
+host = "app2.example.com"
+target = "192.168.1.20:8080"
+```
+
+This configuration forwards requests for `app1.example.com` to a server at `192.168.1.10:8080` and requests for `app2.example.com` to a different server at `192.168.1.20:8080`.
+
+
+### Contributing
+
+We welcome contributions to SheldX! If you'd like to contribute, please open an issue or submit a pull request on GitHub.
+
+### License
+
+SheldX is open-source software licensed under the [MIT License](https://opensource.org/licenses/MIT).
