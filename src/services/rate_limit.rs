@@ -10,12 +10,10 @@ strategy = "hashmap"  # Choose between "hashmap" or "redis" for the rate-limitin
 */
 
 use std::time::Duration;
-use hyper::{ Request };
+use hyper::Request;
 use ratelimit::Ratelimiter;
 use crate::{
-    handlers::{ ProxyError },
-    server::RateLimiterMap,
-    utils::{extract_host, Configs},
+    handlers::ProxyError, server::RateLimiterMap, utils::{extract_host, Configs}
 };
 
 pub struct RateLimitResponse {

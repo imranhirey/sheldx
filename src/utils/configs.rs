@@ -1,7 +1,17 @@
 use serde::{ Deserialize, Serialize };
+use thiserror::Error;
 use std::fs;
 use std::path::PathBuf;
-use std::error::Error;
+
+#[derive(Error, Debug)]
+pub enum ConfigError {
+    #[error("Configuration file read error")]
+    ConfigFileReadError,
+    #[error(
+        "Configuration file parse error this may be due to invalid TOML syntax or invalid configuration"
+    )]
+    ConfigFileParseError,
+}
 
 #[derive(Debug, Deserialize, Clone, Serialize)]
 pub struct ForwardingRule {
@@ -39,7 +49,7 @@ pub struct Configs {
 
 // Check configurations
 impl Configs {
-    pub fn _check(&self) -> Result<(), Box<dyn Error>> {
+    pub fn _check(&self) -> Result<(), ConfigError> {
         if !PathBuf::from(&self.cert_path).exists() {
             log::error!(
                 "Certificate file not found at {:?}. Please see how to set up a TLS certificate at https://docs.sheldx.io/docs/setup-tls-certificate",
@@ -48,18 +58,21 @@ impl Configs {
         }
 
         if !PathBuf::from(&self.key_path).exists() {
-            return Err(format!("Key file not found at {:?}", self.key_path).into());
+            log::error!(
+                "Key file not found at {:?}. Please see how to set up a TLS certificate at https://docs.sheldx.io/docs/setup-tls-certificate",
+                self.key_path
+            );
         }
 
         if self.is_tls_enabled && (self.cert_path.is_empty() || self.key_path.is_empty()) {
-            return Err("Certificate and key paths must be provided when TLS is enabled".into());
+            log::error!("TLS is enabled but certificate or key path is not provided");
         }
 
         Ok(())
     }
 }
 
-pub fn load_configs() -> Result<Configs, Box<dyn Error>> {
+pub fn load_configs() -> Result<Configs, ConfigError> {
     let config_dir = PathBuf::from("/etc/sheldx/configs");
     let config_path = config_dir.join("main.conf");
 
@@ -70,13 +83,15 @@ pub fn load_configs() -> Result<Configs, Box<dyn Error>> {
     if !config_path.exists() {
         // Create default config file
         log::warn!("Configuration file not found, creating default configuration file");
-        create_default_config()?;
+        create_default_config().map_err(|_| ConfigError::ConfigFileReadError)?;
     }
 
     log::info!("Configuration file found at {:?}", config_path);
 
     // Read configuration file
-    let config_string = fs::read_to_string(&config_path)?;
+    let config_string = fs
+        ::read_to_string(&config_path)
+        .map_err(|_| ConfigError::ConfigFileReadError)?;
     log::debug!("Configuration file updated: {:?}", config_string);
     let config: Result<Configs, toml::de::Error> = toml::from_str(&config_string);
 
@@ -84,18 +99,18 @@ pub fn load_configs() -> Result<Configs, Box<dyn Error>> {
         Ok(config) => Ok(config),
         Err(e) => {
             log::error!("Failed to parse configuration file: {:?}", e);
-            Err(format!("Failed to parse configuration file: {:?}", e).into())
+            Err(ConfigError::ConfigFileParseError)
         }
     }
 }
 
-pub fn create_default_config() -> Result<(), Box<dyn Error>> {
+pub fn create_default_config() -> Result<(), ConfigError> {
     let config_dir = PathBuf::from("/etc/sheldx/configs");
     let config_path = config_dir.join("main.conf");
 
     // Ensure the path exists
     if !config_dir.exists() {
-        fs::create_dir_all(&config_dir)?;
+        fs::create_dir_all(&config_dir).map_err(|_| ConfigError::ConfigFileReadError)?;
     }
 
     // Create default configuration
@@ -131,15 +146,21 @@ pub fn create_default_config() -> Result<(), Box<dyn Error>> {
             ),
         };
 
-        let default_config_string = toml::to_string(&default_config)?;
-        fs::write(&config_path, default_config_string)?;
+        let default_config_string = toml
+            ::to_string(&default_config)
+            .map_err(|_| ConfigError::ConfigFileParseError)?;
+        fs
+            ::write(&config_path, default_config_string)
+            .map_err(|_| ConfigError::ConfigFileReadError)?;
 
         // Check if static files directory exists
         log::info!("Creating default static files directory at /etc/sheldx/static");
         let static_files_dir = PathBuf::from("/etc/sheldx/static");
         if !static_files_dir.exists() {
-            fs::create_dir_all(&static_files_dir)?;
-            fs::write(static_files_dir.join("index.html"), "<h1>Welcome to Sheldx</h1>")?;
+            fs::create_dir_all(&static_files_dir).map_err(|_| ConfigError::ConfigFileReadError)?;
+            fs
+                ::write(static_files_dir.join("index.html"), "<h1>Welcome to Sheldx</h1>")
+                .map_err(|_| ConfigError::ConfigFileReadError)?;
         }
 
         log::info!("Default configuration file created at {:?}", config_path);

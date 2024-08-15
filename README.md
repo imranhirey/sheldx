@@ -70,6 +70,9 @@ excluded_paths = ["/health"] # Paths excluded from rate limiting
 excluded_ip_list = ["192.168.1.1"] # IPs excluded from rate limiting
 strategy = "HashMap" # Rate limiting strategy: "HashMap" or "Redis"
 
+
+> currently redis is not supported in the codebase, but it will be added soon.
+
 [[rate_limit_rules]]
 # ... Add more rate limit rules as needed ...
 
