@@ -10,7 +10,7 @@
 
 SheldX is a lightweight and performant proxy server written in Go. It's designed to be easy to use and configure, making it the perfect solution for:
 
-* **Rate limiting** traffic to your applications, preventing abuse and ensuring availability.
+* **Rate limiting** traffic to your applications, preventing abuse and ensuring availability
 * **Forwarding** traffic to different backend servers based on hostnames.
 * **Serving static files**, acting as a simple web server.
 * **Gaining insights** into your traffic patterns with detailed logging.
