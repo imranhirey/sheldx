@@ -53,6 +53,8 @@ make
 
 3. **Configure SheldX:**
 Open the `config.toml` file and customize the following sections:
+> **⚠️  currently only HashMap is supported for rate limiting but we are working on Redis support.**
+
 
 ```toml
 cert_path = "" # Path to your TLS certificate (leave empty if TLS is disabled)
@@ -71,7 +73,6 @@ excluded_ip_list = ["192.168.1.1"] # IPs excluded from rate limiting
 strategy = "HashMap" # Rate limiting strategy: "HashMap" or "Redis"
 
 
-> **⚠️  currently only HashMap is supported for rate limiting but we are working on Redis support.**
 
 [[rate_limit_rules]]
 # ... Add more rate limit rules as needed ...
