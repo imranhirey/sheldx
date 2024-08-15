@@ -1,29 +1,29 @@
-use serde::{Deserialize, Serialize};
+use serde::{ Deserialize, Serialize };
 use std::fs;
 use std::path::PathBuf;
 use std::error::Error;
 
-
+#[derive(Debug, Deserialize, Clone, Serialize)]
+pub struct ForwardingRule {
+    pub host: String,
+    pub target: String,
+}
 
 #[derive(Debug, Deserialize, Clone, Serialize)]
-
 pub enum RateLimitStrategy {
     HashMap,
     Redis,
 }
-#[derive(Debug, Deserialize, Clone, Serialize)]
-
-pub struct RateLimitConfig {
-    pub limit: u32,
-    pub duration: u64,
-    pub exclude: Vec<String>,
-    pub strategy: RateLimitStrategy,
-}
 
 #[derive(Debug, Deserialize, Clone, Serialize)]
-pub struct ForwardingRule {
+pub struct RateLimitRule {
     pub host: String,
-    pub destination: String,
+    pub limit: u64,
+    pub duration: u64,
+    pub max_tokens: u64,
+    pub excluded_paths: Vec<String>,
+    pub excluded_ip_list: Vec<String>,
+    pub strategy: RateLimitStrategy,
 }
 
 #[derive(Debug, Deserialize, Clone, Serialize)]
@@ -34,15 +34,15 @@ pub struct Configs {
     pub show_logs_on_console: bool,
     pub forwarding_rules: Option<Vec<ForwardingRule>>,
     pub static_files_directory: Option<String>,
-    pub rate_limit: Option<RateLimitConfig>,
+    pub rate_limit_rules: Option<Vec<RateLimitRule>>, // Updated to support multiple rules
 }
 
-// check configurations
+// Check configurations
 impl Configs {
     pub fn _check(&self) -> Result<(), Box<dyn Error>> {
         if !PathBuf::from(&self.cert_path).exists() {
             log::error!(
-                "Certificate file not found at {:?} please see how to setup a tls certificate at https://docs.sheldx.io/docs/setup-tls-certificate",
+                "Certificate file not found at {:?}. Please see how to set up a TLS certificate at https://docs.sheldx.io/docs/setup-tls-certificate",
                 self.cert_path
             );
         }
@@ -63,16 +63,16 @@ pub fn load_configs() -> Result<Configs, Box<dyn Error>> {
     let config_dir = PathBuf::from("/etc/sheldx/configs");
     let config_path = config_dir.join("main.conf");
 
-log::debug!("trying to load config file from {:?}", config_path);
+    log::debug!("Trying to load config file from {:?}", config_path);
     log::info!("Loading updated configuration file from {:?}", config_path);
 
-
     // Check if configuration file exists
-    
+    if !config_path.exists() {
         // Create default config file
-        log::warn!("Configuration file not found, creating default updated configuration file");
+        log::warn!("Configuration file not found, creating default configuration file");
         create_default_config()?;
-    
+    }
+
     log::info!("Configuration file found at {:?}", config_path);
 
     // Read configuration file
@@ -107,19 +107,34 @@ pub fn create_default_config() -> Result<(), Box<dyn Error>> {
             show_logs_on_console: true,
             forwarding_rules: None,
             static_files_directory: Some(String::from("/etc/sheldx/static/index.html")),
-            rate_limit:
-                Some(RateLimitConfig {
-                    limit: 100,
-                    duration: 60,
-                    exclude: vec![String::from("/health")],
-                    strategy: RateLimitStrategy::HashMap,
-                }),
+            rate_limit_rules: Some(
+                vec![
+                    RateLimitRule {
+                        host: "api.example.com".to_string(),
+                        limit: 10,
+                        duration: 60,
+                        max_tokens: 1000,
+                        excluded_paths: vec!["/health".to_string()],
+                        excluded_ip_list: vec!["192.168.1.1".to_string()],
+                        strategy: RateLimitStrategy::HashMap,
+                    },
+                    RateLimitRule {
+                        host: "public.example.com".to_string(),
+                        limit: 5,
+                        duration: 60,
+                        max_tokens: 500,
+                        excluded_paths: vec!["/status".to_string()],
+                        excluded_ip_list: vec![],
+                        strategy: RateLimitStrategy::Redis,
+                    }
+                ]
+            ),
         };
 
         let default_config_string = toml::to_string(&default_config)?;
         fs::write(&config_path, default_config_string)?;
 
-        // check if static files directory exists
+        // Check if static files directory exists
         log::info!("Creating default static files directory at /etc/sheldx/static");
         let static_files_dir = PathBuf::from("/etc/sheldx/static");
         if !static_files_dir.exists() {
@@ -128,8 +143,6 @@ pub fn create_default_config() -> Result<(), Box<dyn Error>> {
         }
 
         log::info!("Default configuration file created at {:?}", config_path);
-
-
     }
 
     Ok(())

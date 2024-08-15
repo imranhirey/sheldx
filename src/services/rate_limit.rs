@@ -1,69 +1,103 @@
 /*
-i am usiing toml  for my configs 
+Configuration using TOML for rate limiting.
 
 [[rate_limit]]
-enabled = true // first look for this
-limit = 100
-duration = 60
-exclude = ["/health"] // second look for this
-// we have two stregies for ratelimiting local hash map and redis so user can choose which one to use
-
-strategy = "hashmap" // third look for this
-
+enabled = true  # Enable rate limiting
+limit = 100     # Number of requests allowed
+duration = 60   # Time period in seconds for the limit
+exclude = ["/health"]  # Paths to exclude from rate limiting
+strategy = "hashmap"  # Choose between "hashmap" or "redis" for the rate-limiting strategy
 */
 
 use std::time::Duration;
-
-use hyper::Request;
+use http_body_util::Full;
+use hyper::{ body::Bytes, Request, Response };
+use log::warn;
 use ratelimit::Ratelimiter;
+use crate::{
+    handlers::{ show_html_page, ProxyError },
+    server::RateLimiterMap,
+    utils::{extract_host, load_configs, Configs},
+};
 
-use crate::{handlers::{show_html_page, ProxyError}, server::RateLimiterMap, utils::load_configs};
-
-
-pub fn enforce_rate_limit(
-    req: &Request<hyper::body::Body>,
+pub struct RateLimitResponse {
+    pub response: String,
+    pub status_code: u16,
+}
+pub async fn enforce_rate_limit(
+    req: &Request<hyper::body::Incoming>,
     client_ip: &str,
     rate_limiter_map: &RateLimiterMap,
-) -> Result<(), ProxyError> {
-    let rate_limiters = rate_limiter_map.lock().unwrap();
-    let rate_limiter = rate_limiters
-        .get(client_ip)
-        .unwrap_or_else(|| {
-            let configs = load_configs().map_err(|_| ProxyError::ConfigError)?;
-            let rate_limit = configs.rate_limit.iter().find(|rate_limit| {
-                rate_limit.exclude.iter().all(|path| !req.uri().path().starts_with(path))
-            });
+    config: &Configs
+) -> Result<RateLimitResponse, ProxyError> {
+    log::debug!("Client IP: {:?}", client_ip);
 
-            match rate_limit {
-                Some(rate_limit) => {
-                    let rate_limiter = Ratelimiter::builder(rate_limit.limit, Duration::from_secs(rate_limit.duration))
-                        .max_tokens(rate_limit.limit)
-                        .build()
-                        .unwrap();
-                    rate_limiter
-                }
-                None => {
-                    let rate_limiter = Ratelimiter::builder(10, Duration::from_secs(60))
-                        .max_tokens(10)
-                        .build()
-                        .unwrap();
-                    rate_limiter
-                }
+    let host = extract_host(&req).unwrap();
+    let path = req.uri().path();
+
+    // Check if there are rate limit rules
+    if let Some(rate_limit_rules) = &config.rate_limit_rules {
+        // Try to find a rule that matches the host
+        let rule = rate_limit_rules.iter()
+            .find(|rule| rule.host == host)
+            // If no specific rule matches, fall back to the wildcard rule
+            .or_else(|| rate_limit_rules.iter().find(|rule| rule.host == "*"));
+
+        if let Some(rule) = rule {
+            // Check if the request path is in the exclude list
+            if rule.excluded_paths.iter().any(|p| path.starts_with(p)) {
+                return Ok(RateLimitResponse {
+                    response: String::new(),
+                    status_code: 200,
+                });
             }
-        });
 
-    // Apply rate limiting
-    if let Err(sleep) = rate_limiter.try_wait() {
-        // Rate limit exceeded
+            // Check if the IP is in the excluded list
+            if rule.excluded_ip_list.contains(&client_ip.to_string()) {
+                return Ok(RateLimitResponse {
+                    response: String::new(),
+                    status_code: 200,
+                });
+            }
 
-        let title = "<h1>429 Too Many Requests</h1>";
-        let message = format!(
-            "<p>Rate limit exceeded. Try again in {} seconds</p>",
-            sleep.as_secs()
-        );
-        let response = show_html_page(title, &message);
-        return Err(ProxyError::HttpCommError);
+            // Enforce the rate limit based on the rule's settings
+            let mut rate_limiters = rate_limiter_map.lock().await;
+            let rate_limiter = rate_limiters
+                .entry(client_ip.to_string())
+                .or_insert_with(|| {
+                    Ratelimiter::builder(rule.limit, Duration::from_secs(rule.duration))
+                        .max_tokens(rule.max_tokens)
+                        .initial_available(rule.limit)
+                        .build()
+                        .unwrap()
+                });
+
+            match rate_limiter.try_wait() {
+                Ok(()) => Ok(RateLimitResponse {
+                    response: String::new(),
+                    status_code: 200,
+                }),
+                Err(seconds) => Ok(RateLimitResponse {
+                    response: format!(
+                        "Rate limit exceeded. Try again in {} seconds",
+                        seconds.as_secs()
+                    ),
+                    status_code: 429,
+                }),
+            }
+        } else {
+            // No matching rule found, apply default behavior if needed
+            log::info!("No rate limit rule found for host: {} so no rate limit applied", host);
+            Ok(RateLimitResponse {
+                response: String::new(),
+                status_code: 200,
+            })
+        }
+    } else {
+        // No rate limit rules specified, apply default behavior if needed
+        Ok(RateLimitResponse {
+            response: String::new(),
+            status_code: 200,
+        })
     }
-
-    Ok(())
 }
