@@ -1,4 +1,9 @@
-## SheldX: Your Go-To Proxy for Rate Limiting and More
+
+## Sheldx: A Simple and Powerful Proxy with Rate Limiting
+
+[![Go Report Card](https://goreportcard.com/badge/github.com/imranhirey/sheldx)](https://goreportcard.com/report/github.com/imranhirey/sheldx)
+[![GitHub license](https://img.shields.io/github/license/imranhirey/sheldx)](https://github.com/imranhirey/sheldx/blob/main/LICENSE)
+[![GitHub release](https://img.shields.io/github/v/release/imranhirey/sheldx)](https://github.com/imranhirey/sheldx/releases)
 
 SheldX is a lightweight and performant proxy server written in Go. It's designed to be easy to use and configure, making it the perfect solution for:
 
