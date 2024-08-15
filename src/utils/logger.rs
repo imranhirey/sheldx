@@ -1,7 +1,7 @@
 use chrono::Local;
 use colored::*;
 use fern::Dispatch;
-use log::{info, warn, error, LevelFilter};
+use log::{LevelFilter};
 
 pub fn init_logger() -> Result<(), Box<dyn std::error::Error>> {
     let log_file_path = "output.log";

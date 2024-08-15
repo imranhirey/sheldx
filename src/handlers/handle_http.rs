@@ -1,10 +1,6 @@
-use std::collections::HashMap;
-use std::fs;
-use std::sync::Arc;
-use std::time::{ Duration, SystemTime, UNIX_EPOCH };
-use chrono::format;
-use ratelimit::Ratelimiter;
-use redis::Commands;
+use std::fs::{self, File};
+use std::io::Read;
+use std::time::{ Duration };
 use thiserror::Error;
 use http_body_util::{ BodyExt, Full };
 use hyper::{ body::Bytes, client::conn::http1, Request, Response };
@@ -41,6 +37,9 @@ pub async fn handle_http_connections(
     rate_limiter_map: &RateLimiterMap
 ) -> Result<Response<Full<Bytes>>, ProxyError> {
     log::debug!("Client IP: {:?}", client_ip);
+    let host = extract_host(&req).map_err(|_| ProxyError::HostError)?;
+
+    log::debug!("Host waaa: {:?}", host);
 
     let configs = load_configs().map_err(|_| ProxyError::ConfigError)?;
     log::debug!("Configs: {:?}", configs);
@@ -48,10 +47,22 @@ pub async fn handle_http_connections(
     log::debug!("Rate limit status: {:?}", rate_limit_status.response);
 
     if rate_limit_status.status_code != 200 {
+        let user_ip = client_ip;
+        let seconds = rate_limit_status.seconds;
+        let mut html_error = File::open("/etc/sheldx/static/rate_limit.html").unwrap();
+        let mut html_content = String::new();
+        html_error.read_to_string(&mut html_content).unwrap();
+
+        let final_html = html_content
+            .replace("{{user_ip}}", &user_ip)
+            .replace("{{seconds}}", &seconds.to_string());
+
+        log::debug!("Rate limit response: {:?}", final_html);
+
         return Ok(
             Response::builder()
                 .status(rate_limit_status.status_code)
-                .body(Full::from(Bytes::from(rate_limit_status.response)))
+                .body(Full::from(Bytes::from(final_html)))
                 .unwrap()
         );
     }
@@ -60,9 +71,7 @@ pub async fn handle_http_connections(
     // if tls is enabled, return error with this site  is not secure , if you are the owner of this website, please configure it properly or if you are a visitor, please try again later
 
     // Extract the host from the request
-    let host = extract_host(&req).map_err(|_| ProxyError::HostError)?;
 
-    log::debug!("Host waaa: {:?}", host);
    
 
     // Ensure forwarding rules are present
@@ -91,14 +100,14 @@ pub async fn handle_http_connections(
 
     println!("{:?}", forwarding_rules);
     // Get the forwarding rule for the host
-    let rule: crate::utils::ForwardingRule = get_forwarding_rule(&Some(forwarding_rules), &host).map_err(
-        |_| ProxyError::RuleNotFound
-    )?;
-
-    log::debug!("Forwarding Rule: {:?}", rule);
+    let rule = get_forwarding_rule(&Some(forwarding_rules), &host);
+ 
+   if rule.is_err() {
+        return Ok(create_error_response(404, "Sorry the page you are looking for is not found", "Page not found"));
+    }
 
     // Connect to the destination server with a timeout
-    let destination = rule.target;
+    let destination = rule.unwrap().target  ;
     log::debug!("Destination: {:?}", destination);
 
     let stream = timeout(Duration::from_secs(10), TcpStream::connect(destination)).await
@@ -131,11 +140,10 @@ fn create_error_response(status_code: u16, message: &str, title: &str) -> Respon
         title: title.to_string(),
     };
     log::error!("{}", message);
-    let client_message =
-        "We encountered an internal server error. Please contact the admin if this persists.";
+   
     http_error_response(
         response.status_code,
-        client_message.to_string(),
+       message.to_string(),
         response.title
     ).unwrap_or_else(|_| {
         Response::builder()
@@ -153,27 +161,27 @@ fn show_default_page() -> Response<Full<Bytes>> {
         .body(Full::from(Bytes::from(file)))
         .unwrap()
 }
-pub fn show_html_page(title: &str, message: &str) -> Response<Full<Bytes>> {
-    let html = format!(
-        "<!DOCTYPE html>
-        <html>
-            <head>
-                <title>{}</title>
-            </head>
-            <body>
-                <h1>{}</h1>
-                <p>{}</p>
-            </body>
-        </html>",
-        title,
-        title,
-        message
-    );
-    Response::builder()
-        .status(404)
-        .body(Full::from(Bytes::from(html)))
-        .unwrap()
-}
+// pub fn show_html_page(title: &str, message: &str) -> Response<Full<Bytes>> {
+//     let html = format!(
+//         "<!DOCTYPE html>
+//         <html>
+//             <head>
+//                 <title>{}</title>
+//             </head>
+//             <body>
+//                 <h1>{}</h1>
+//                 <p>{}</p>
+//             </body>
+//         </html>",
+//         title,
+//         title,
+//         message
+//     );
+//     Response::builder()
+//         .status(404)
+//         .body(Full::from(Bytes::from(html)))
+//         .unwrap()
+// }
 
 // let client = redis::Client::open("redis://127.0.0.1:6383")?;
 // let mut con = client.get_connection()?;

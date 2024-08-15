@@ -1,21 +1,15 @@
 use std::collections::HashMap;
-use std::fs::File;
-use std::io::BufReader;
 use std::net::{ IpAddr, Ipv4Addr };
-use std::path::PathBuf;
-use std::time::Duration;
 use std::{ error::Error as StdError, net::SocketAddr };
 use std::sync::Arc;
 use async_trait::async_trait;
-use hyper::server::conn::http1::{ self as serverhttp, Builder };
+use hyper::server::conn::http1::{ self as serverhttp };
 use hyper::service::service_fn;
 use hyper_util::rt::TokioIo;
-use log;
 
 use ratelimit::Ratelimiter;
 use tokio::net::TcpListener;
 use tokio::sync::Mutex;
-use tokio_rustls::TlsAcceptor;
 
 use crate::handlers::handle_http_connections;
 use crate::utils::load_configs;
@@ -24,7 +18,7 @@ use crate::utils::load_configs;
 /// It contains a connection handler function that will be called
 /// for each incoming TCP connection.
 pub struct WithoutTLS {}
-pub struct WithTls {}
+// pub struct WithTls {}
 
 /// Trait representing a server that can be started.
 ///

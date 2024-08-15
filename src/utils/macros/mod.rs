@@ -1,4 +1,3 @@
-use std::convert::Infallible;
 
 use hyper::{body::Incoming, Request};
 

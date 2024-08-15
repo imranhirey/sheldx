@@ -1,2 +1,6 @@
 /target
 /output.log
+/.idea
+/.vscode
+/.vs
+/.rdb

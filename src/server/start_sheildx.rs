@@ -1,4 +1,4 @@
-use crate::{ server::WithTls, utils::load_configs };
+use crate::{ utils::load_configs };
 
 use super::{ Server, WithoutTLS };
 

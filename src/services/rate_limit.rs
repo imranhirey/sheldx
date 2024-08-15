@@ -10,19 +10,18 @@ strategy = "hashmap"  # Choose between "hashmap" or "redis" for the rate-limitin
 */
 
 use std::time::Duration;
-use http_body_util::Full;
-use hyper::{ body::Bytes, Request, Response };
-use log::warn;
+use hyper::{ Request };
 use ratelimit::Ratelimiter;
 use crate::{
-    handlers::{ show_html_page, ProxyError },
+    handlers::{ ProxyError },
     server::RateLimiterMap,
-    utils::{extract_host, load_configs, Configs},
+    utils::{extract_host, Configs},
 };
 
 pub struct RateLimitResponse {
     pub response: String,
     pub status_code: u16,
+    pub seconds: u64,
 }
 pub async fn enforce_rate_limit(
     req: &Request<hyper::body::Incoming>,
@@ -32,7 +31,10 @@ pub async fn enforce_rate_limit(
 ) -> Result<RateLimitResponse, ProxyError> {
     log::debug!("Client IP: {:?}", client_ip);
 
-    let host = extract_host(&req).unwrap();
+    let host = match extract_host(req) {
+        Ok(host) => host,
+        Err(_) => return Err(ProxyError::HostError),
+    };
     let path = req.uri().path();
 
     // Check if there are rate limit rules
@@ -49,6 +51,7 @@ pub async fn enforce_rate_limit(
                 return Ok(RateLimitResponse {
                     response: String::new(),
                     status_code: 200,
+                    seconds: 0,
                 });
             }
 
@@ -57,6 +60,7 @@ pub async fn enforce_rate_limit(
                 return Ok(RateLimitResponse {
                     response: String::new(),
                     status_code: 200,
+                    seconds: 0,
                 });
             }
 
@@ -76,6 +80,7 @@ pub async fn enforce_rate_limit(
                 Ok(()) => Ok(RateLimitResponse {
                     response: String::new(),
                     status_code: 200,
+                    seconds: 0,
                 }),
                 Err(seconds) => Ok(RateLimitResponse {
                     response: format!(
@@ -83,6 +88,7 @@ pub async fn enforce_rate_limit(
                         seconds.as_secs()
                     ),
                     status_code: 429,
+                    seconds: seconds.as_secs(),
                 }),
             }
         } else {
@@ -91,6 +97,7 @@ pub async fn enforce_rate_limit(
             Ok(RateLimitResponse {
                 response: String::new(),
                 status_code: 200,
+                seconds: 0,
             })
         }
     } else {
@@ -98,6 +105,7 @@ pub async fn enforce_rate_limit(
         Ok(RateLimitResponse {
             response: String::new(),
             status_code: 200,
+            seconds: 0,
         })
     }
 }
