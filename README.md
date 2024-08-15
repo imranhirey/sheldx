@@ -44,7 +44,7 @@ cd sheldx
 
 2. **Build SheldX:**
 ```bash
-go build
+make
 ```
 
 3. **Configure SheldX:**
