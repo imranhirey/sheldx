@@ -34,8 +34,14 @@ pub enum ProxyError {
   #[error("HTTP communication error")]
   HttpCommError,
   #[error("Redis error: {0}")] RedisError(#[from] redis::RedisError),
+  // static file error
+  #[error("you dont have foward rules configured neither static files directory")]
+  StaticFileError,
+
 }
 
+
+// const   RATE_LIMIT_HTML: &str = include!("/etc/sheldx/static/rate_limit.html");
 pub async fn handle_http_connections(
   req: Request<hyper::body::Incoming>,
   client_ip: String,
@@ -51,6 +57,7 @@ pub async fn handle_http_connections(
   log::debug!("Configs: {:?}", configs);
 
   let rate_limit_status = enforce_rate_limit(&req, &client_ip, &rate_limiter_map, &configs).await?;
+  log::debug!("Rate limit status: {:?}", rate_limit_status.response);
   log::debug!("Rate limit status: {:?}", rate_limit_status.response);
 
   if rate_limit_status.status_code != 200 {
@@ -76,7 +83,7 @@ pub async fn handle_http_connections(
       log::debug!("Serving static file from directory: {}", static_files_directory);
       let file_content = fs
         ::read_to_string(static_files_directory)
-        .map_err(|_| ProxyError::RuleNotFound)?;
+        .map_err(|_| ProxyError::StaticFileError)?;
       return Ok(
         Response::builder()
           .status(404)

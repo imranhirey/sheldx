@@ -1489,6 +1489,7 @@ dependencies = [
  "hyper",
  "hyper-tls",
  "hyper-util",
+ "lazy_static",
  "log",
  "log4rs",
  "ratelimit",

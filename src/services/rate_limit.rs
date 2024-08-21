@@ -43,6 +43,8 @@ pub async fn enforce_rate_limit(
             // If no specific rule matches, fall back to the wildcard rule
             .or_else(|| rate_limit_rules.iter().find(|rule| rule.host == "*"));
 
+        log::debug!("Rate limit rule: {:?}", rule);
+
         if let Some(rule) = rule {
             // Check if the request path is in the exclude list
             if rule.excluded_paths.iter().any(|p| path.starts_with(p)) {

@@ -21,7 +21,7 @@ pub struct ForwardingRule {
 
 #[derive(Debug, Deserialize, Clone, Serialize)]
 pub enum RateLimitStrategy {
-    HashMap,
+    local,
     Redis,
 }
 
@@ -79,7 +79,7 @@ pub fn load_configs() -> Result<Configs, ConfigError> {
     let config_path = config_dir.join("main.conf");
 
     log::debug!("Trying to load config file from {:?}", config_path);
-    log::info!("Loading updated configuration file from {:?}", config_path);
+    log::info!("Loading updated configuration file from {:?}", config_path);  
 
     // Check if configuration file exists
     if !config_path.exists() {
@@ -135,7 +135,7 @@ pub fn create_default_config() -> Result<(), ConfigError> {
                         max_tokens: 1000,
                         excluded_paths: vec!["/health".to_string()],
                         excluded_ip_list: vec!["192.168.1.1".to_string()],
-                        strategy: RateLimitStrategy::HashMap,
+                        strategy: RateLimitStrategy::local,
                     },
                     RateLimitRule {
                         host: "public.example.com".to_string(),

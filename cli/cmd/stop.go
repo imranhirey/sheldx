@@ -1,40 +1,38 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
+	"os/exec"
 
 	"github.com/spf13/cobra"
 )
 
-var stopCmd = &cobra.Command{
+var StopCmd = &cobra.Command{
 	Use:   "stop",
-	Short: "Stop the SheldX proxy server",
+	Short: "Stop the sheldx process",
 	Run: func(cmd *cobra.Command, args []string) {
-		println("trying  to stop sheldx server")
-		// Add your stop logic here
-		println("sheldx server stopped successfully")
-	},
-}
-var test = &cobra.Command{
-	Use:   "test",
-	Short: "test",
-	Run: func(cmd *cobra.Command, args []string) {
-		testw()
+		if success := stopProcess(); !success {
+			os.Exit(1)
+		}
+		fmt.Println("sheldx stopped.")
 	},
 }
 
-func init() {
-	rootCmd.AddCommand(stopCmd)
-	rootCmd.AddCommand(test)
-}
+func stopProcess() bool {
+	// Corrected command and arguments
+	cmd := exec.Command("pkill", "sheldx")
 
-func testw() {
-	// check if sheldx in etc folder
+	fmt.Println("Stopping sheldx process...")
 
-	var path = "/etc/sheldx"
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		println("sheldx not found")
-	} else {
-		println("sheldx found")
+	// Run the command and capture the output and error
+	err := cmd.Run()
+	if err != nil {
+		// Print error message and return false
+		fmt.Printf("Error stopping process: %v\n", err)
+		return false
 	}
+
+	// If no error, return true
+	return true
 }
